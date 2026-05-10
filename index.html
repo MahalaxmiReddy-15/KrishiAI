@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KrishiAI — Smart Crop Advisor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ── */
+:root {
+  --soil:    #2C1A0E;
+  --earth:   #5C3D1E;
+  --amber:   #D4882A;
+  --gold:    #F0B429;
+  --sage:    #7C9E6F;
+  --moss:    #4A7C59;
+  --leaf:    #2E5E3E;
+  --cream:   #FAF3E8;
+  --warm:    #F5E6C8;
+  --sky:     #B8D4E8;
+  --text:    #1A1008;
+  --muted:   #7A6552;
+  --white:   #FFFFFF;
+  --shadow:  rgba(44,26,14,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Background ── */
+.bg-field {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 100%, rgba(76,124,89,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 0%, rgba(212,136,42,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 50% at 50% 50%, rgba(250,243,232,1) 0%, rgba(240,230,210,1) 100%);
+}
+
+/* Floating grain texture */
+.bg-field::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+/* ── Layout ── */
+.wrapper {
+  position: relative; z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* ── Header ── */
+header {
+  text-align: center;
+  padding: 3rem 0 2.5rem;
+  animation: fadeDown 0.8s ease both;
+}
+.logo-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--leaf);
+  color: var(--cream);
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.4rem 1.2rem;
+  border-radius: 99px;
+  margin-bottom: 1.2rem;
+}
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--soil);
+}
+h1 span { color: var(--moss); }
+.subtitle {
+  margin-top: 0.8rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+.accuracy-pill {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: rgba(76,124,89,0.12);
+  border: 1px solid rgba(76,124,89,0.3);
+  color: var(--moss);
+  padding: 0.35rem 1rem;
+  border-radius: 99px;
+  font-size: 0.82rem; font-weight: 600;
+  margin-top: 1rem;
+}
+.accuracy-pill::before { content: '●'; font-size: 0.5rem; color: var(--sage); }
+
+/* ── Main grid ── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+@media (max-width: 720px) { .main-grid { grid-template-columns: 1fr; } }
+
+/* ── Card ── */
+.card {
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212,136,42,0.2);
+  border-radius: 20px;
+  padding: 1.8rem;
+  box-shadow: 0 4px 24px var(--shadow);
+  animation: fadeUp 0.7s ease both;
+}
+.card:nth-child(2) { animation-delay: 0.1s; }
+
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--earth);
+  margin-bottom: 1.4rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-title .icon { font-size: 1.2rem; }
+
+/* ── Form ── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+
+label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+label span { font-size: 0.9em; color: var(--amber); }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%; height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(to right, var(--moss) 0%, var(--sage) 100%);
+  outline: none; cursor: pointer;
+  margin: 4px 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 3px solid var(--moss);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+.range-row {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.range-val {
+  min-width: 44px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--earth);
+}
+
+/* ── Button ── */
+.predict-btn {
+  width: 100%;
+  margin-top: 1.4rem;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--leaf) 0%, var(--moss) 100%);
+  color: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem; font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 16px rgba(46,94,62,0.35);
+  letter-spacing: 0.02em;
+}
+.predict-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(46,94,62,0.4);
+}
+.predict-btn:active { transform: translateY(0); }
+.predict-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ── Result card ── */
+#result-section { display: none; animation: fadeUp 0.6s ease both; }
+
+.result-hero {
+  text-align: center;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--leaf) 0%, var(--moss) 100%);
+  border-radius: 16px;
+  color: var(--cream);
+  margin-bottom: 1.2rem;
+}
+.crop-emoji { font-size: 3.5rem; display: block; margin-bottom: 0.5rem; }
+.crop-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem; font-weight: 900;
+}
+.confidence-ring {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: rgba(255,255,255,0.2);
+  padding: 0.3rem 0.9rem;
+  border-radius: 99px;
+  font-size: 0.85rem; font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+/* Confidence bar */
+.conf-bar-wrap {
+  margin: 0.8rem 0 0.4rem;
+  background: rgba(255,255,255,0.2);
+  border-radius: 99px; height: 6px; overflow: hidden;
+}
+.conf-bar {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 99px;
+  transition: width 1s cubic-bezier(.22,1,.36,1);
+}
+
+/* Meta badges */
+.meta-badges {
+  display: flex; gap: 0.6rem; flex-wrap: wrap;
+  justify-content: center; margin-top: 1rem;
+}
+.badge {
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem; font-weight: 500;
+}
+.badge strong { display: block; font-size: 0.68rem; opacity: 0.75; margin-bottom: 0.1rem; }
+
+/* Tip box */
+.tip-box {
+  background: rgba(240,180,41,0.12);
+  border: 1px solid rgba(212,136,42,0.3);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  font-size: 0.88rem;
+  color: var(--earth);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.tip-box::before { content: '💡 '; }
+
+/* Alternatives */
+.alt-title {
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem;
+}
+.alt-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.alt-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--warm);
+  border-radius: 10px; padding: 0.55rem 0.9rem;
+  font-size: 0.88rem;
+}
+.alt-item .alt-bar-wrap {
+  flex: 1; height: 4px;
+  background: rgba(92,61,30,0.12); border-radius: 99px; overflow: hidden;
+}
+.alt-item .alt-bar {
+  height: 100%; background: var(--sage); border-radius: 99px;
+  transition: width 0.8s ease;
+}
+.alt-pct { font-weight: 600; color: var(--earth); min-width: 38px; text-align: right; }
+
+/* ── Advice section ── */
+.advice-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1rem; margin-top: 1.5rem;
+}
+@media (max-width: 720px) { .advice-grid { grid-template-columns: 1fr; } }
+
+.advice-card {
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212,136,42,0.15);
+  border-radius: 16px; padding: 1.4rem;
+  animation: fadeUp 0.7s ease both;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.advice-card:nth-child(2) { animation-delay: 0.08s; }
+.advice-title {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem;
+}
+.fert-item {
+  display: flex; align-items: flex-start; gap: 0.5rem;
+  font-size: 0.84rem; line-height: 1.5; margin-bottom: 0.5rem;
+  color: var(--text);
+}
+.fert-item::before { content: '·'; color: var(--moss); font-size: 1.2rem; line-height: 1; }
+.irrigation-text { font-size: 0.88rem; line-height: 1.6; color: var(--earth); }
+
+/* ── Loading spinner ── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2.5px solid rgba(255,255,255,0.3);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+.predict-btn.loading .spinner { display: block; }
+.predict-btn.loading .btn-text { display: none; }
+
+/* ── Animations ── */
+@keyframes fadeDown {
+  from { opacity:0; transform: translateY(-20px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(24px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="bg-field"></div>
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-badge">🌱 KrishiAI</div>
+    <h1>Smart <span>Crop</span> Advisor</h1>
+    <p class="subtitle">AI-powered recommendations based on your soil & climate</p>
+    <div class="accuracy-pill">Random Forest · 94.9% Accuracy</div>
+  </header>
+
+  <!-- Input + How it Works -->
+  <div class="main-grid">
+
+    <!-- Input Card -->
+    <div class="card" style="animation-delay:0.05s">
+      <div class="card-title"><span class="icon">🧪</span> Soil & Climate Parameters</div>
+
+      <div class="form-row">
+        <!-- N -->
+        <div class="form-group">
+          <label>Nitrogen (N) <span>kg/ha</span></label>
+          <div class="range-row">
+            <input type="range" id="N" min="0" max="140" value="60" oninput="upd('N')">
+            <span class="range-val" id="N-val">60</span>
+          </div>
+        </div>
+        <!-- P -->
+        <div class="form-group">
+          <label>Phosphorus (P) <span>kg/ha</span></label>
+          <div class="range-row">
+            <input type="range" id="P" min="5" max="145" value="45" oninput="upd('P')">
+            <span class="range-val" id="P-val">45</span>
+          </div>
+        </div>
+        <!-- K -->
+        <div class="form-group">
+          <label>Potassium (K) <span>kg/ha</span></label>
+          <div class="range-row">
+            <input type="range" id="K" min="5" max="205" value="45" oninput="upd('K')">
+            <span class="range-val" id="K-val">45</span>
+          </div>
+        </div>
+        <!-- Temp -->
+        <div class="form-group">
+          <label>Temperature <span>°C</span></label>
+          <div class="range-row">
+            <input type="range" id="temperature" min="8" max="43" value="25" oninput="upd('temperature')">
+            <span class="range-val" id="temperature-val">25</span>
+          </div>
+        </div>
+        <!-- Humidity -->
+        <div class="form-group">
+          <label>Humidity <span>%</span></label>
+          <div class="range-row">
+            <input type="range" id="humidity" min="14" max="99" value="70" oninput="upd('humidity')">
+            <span class="range-val" id="humidity-val">70</span>
+          </div>
+        </div>
+        <!-- pH -->
+        <div class="form-group">
+          <label>Soil pH</label>
+          <div class="range-row">
+            <input type="range" id="ph" min="3.5" max="9.5" step="0.1" value="6.5" oninput="upd('ph')">
+            <span class="range-val" id="ph-val">6.5</span>
+          </div>
+        </div>
+        <!-- Rainfall -->
+        <div class="form-group" style="grid-column: span 2">
+          <label>Annual Rainfall <span>mm</span></label>
+          <div class="range-row">
+            <input type="range" id="rainfall" min="20" max="300" value="100" oninput="upd('rainfall')">
+            <span class="range-val" id="rainfall-val">100</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="predict-btn" id="predict-btn" onclick="predict()">
+        <div class="spinner"></div>
+        <span class="btn-text">🌾 &nbsp; Recommend Best Crop</span>
+      </button>
+    </div>
+
+    <!-- Result Card -->
+    <div>
+      <!-- placeholder when no result -->
+      <div class="card" id="placeholder-card" style="animation-delay:0.1s; text-align:center; padding: 3rem 1.5rem; color: var(--muted);">
+        <div style="font-size:3rem; margin-bottom:1rem">🌾</div>
+        <div style="font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--earth); margin-bottom:0.6rem">Set your parameters</div>
+        <div style="font-size:0.88rem; line-height:1.6">Adjust the sliders on the left with your soil test values and local climate data, then click <strong>Recommend</strong>.</div>
+      </div>
+
+      <!-- result -->
+      <div id="result-section">
+        <div class="card" style="padding:1.4rem">
+          <div class="result-hero">
+            <span class="crop-emoji" id="res-emoji">🌾</span>
+            <div class="crop-name" id="res-name">—</div>
+            <div class="confidence-ring" id="res-conf">— % match</div>
+            <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar" style="width:0%"></div></div>
+          </div>
+
+          <div class="meta-badges" id="meta-badges"></div>
+          <div class="tip-box" id="res-tip" style="margin-top:1rem"></div>
+
+          <div class="alt-title">Other options</div>
+          <div class="alt-list" id="alt-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <!-- Advice Grid -->
+  <div class="advice-grid" id="advice-section" style="display:none">
+    <div class="advice-card">
+      <div class="advice-title">🧴 Fertilizer Recommendations</div>
+      <div id="fert-list"></div>
+    </div>
+    <div class="advice-card">
+      <div class="advice-title">💧 Irrigation Advice</div>
+      <div class="irrigation-text" id="irri-text"></div>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+function upd(id) {
+  document.getElementById(id+'-val').textContent =
+    parseFloat(document.getElementById(id).value).toFixed(id === 'ph' ? 1 : 0);
+}
+
+async function predict() {
+  const btn = document.getElementById('predict-btn');
+  btn.classList.add('loading'); btn.disabled = true;
+
+  const payload = {
+    N:           parseFloat(document.getElementById('N').value),
+    P:           parseFloat(document.getElementById('P').value),
+    K:           parseFloat(document.getElementById('K').value),
+    temperature: parseFloat(document.getElementById('temperature').value),
+    humidity:    parseFloat(document.getElementById('humidity').value),
+    ph:          parseFloat(document.getElementById('ph').value),
+    rainfall:    parseFloat(document.getElementById('rainfall').value),
+  };
+
+  try {
+    const res  = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+
+    if (!data.success) throw new Error(data.error);
+
+    // Hide placeholder
+    document.getElementById('placeholder-card').style.display = 'none';
+
+    // Fill hero
+    document.getElementById('res-emoji').textContent = data.emoji;
+    document.getElementById('res-name').textContent  = data.crop;
+    document.getElementById('res-conf').textContent  = data.confidence + '% match';
+    setTimeout(() => {
+      document.getElementById('conf-bar').style.width = data.confidence + '%';
+    }, 100);
+
+    // Meta badges
+    document.getElementById('meta-badges').innerHTML = `
+      <div class="badge"><strong>Season</strong>${data.season}</div>
+      <div class="badge"><strong>Water Need</strong>${data.water}</div>
+      <div class="badge"><strong>Confidence</strong>${data.confidence}%</div>
+    `;
+
+    document.getElementById('res-tip').textContent = data.tip;
+
+    // Top-3 alternatives (skip rank 1)
+    const altHtml = data.top3.slice(1).map(([name, pct]) =>
+      `<div class="alt-item">
+        <span style="font-weight:500">${name}</span>
+        <div class="alt-bar-wrap"><div class="alt-bar" style="width:${pct}%"></div></div>
+        <span class="alt-pct">${pct}%</span>
+      </div>`
+    ).join('');
+    document.getElementById('alt-list').innerHTML = altHtml;
+
+    // Advice
+    document.getElementById('fert-list').innerHTML =
+      data.fertilizer.map(t => `<div class="fert-item">${t}</div>`).join('');
+    document.getElementById('irri-text').textContent = data.irrigation;
+
+    document.getElementById('result-section').style.display = 'block';
+    document.getElementById('advice-section').style.display = 'grid';
+
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
